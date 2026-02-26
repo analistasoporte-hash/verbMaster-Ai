@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>VerbMaster AI</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #4f46e5;
+            --bg-light: #f8fafc;
+        }
+
+        body { 
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background-color: var(--bg-light);
+            color: #1e293b;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .card-shadow {
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.03);
+        }
+
+        .logo-naay {
+            background: #6366f1;
+            color: white;
+            padding: 4px 8px;
+            border-radius: 8px;
+            font-weight: 800;
+            font-size: 10px;
+        }
+
+        .nav-btn.active {
+            background-color: #4f46e5;
+            color: white;
+        }
+
+        .loading-spinner {
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top: 2px solid white;
+            width: 18px;
+            height: 18px;
+            animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+        .audio-btn {
+            width: 40px;
+            height: 40px;
+            background: #eef2ff;
+            color: #6366f1;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s ease;
+        }
+        .audio-btn:active { transform: scale(0.9); }
+        
+        .slide-up {
+            animation: slideUp 0.4s ease-out;
+        }
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .gemini-gradient {
+            background: linear-gradient(135deg, #4f46e5 0%, #a855f7 100%);
+        }
+    </style>
+</head>
+<body class="pb-24">
+
+    <!-- Header Principal -->
+    <header class="p-6 flex justify-between items-center bg-white sticky top-0 z-50 border-b border-slate-50">
+        <div class="flex items-center gap-3">
+            <span class="logo-naay">NAAY</span>
+            <div>
+                <p class="text-[9px] font-bold text-indigo-500 uppercase tracking-widest leading-none">Aprende Inglés</p>
+                <h1 class="text-xl font-extrabold text-slate-800">VerbMaster AI</h1>
+            </div>
+        </div>
+        <div class="bg-indigo-50 px-4 py-2 rounded-2xl text-center min-w-[70px]">
+            <p class="text-[8px] font-bold text-indigo-400 uppercase tracking-tighter">Puntos</p>
+            <p id="puntos-val" class="text-lg font-black text-indigo-600 leading-none">0</p>
+        </div>
+    </header>
+
+    <main class="px-6 space-y-4 max-w-4xl mx-auto mt-4">
+        
+        <!-- Tabs de Navegación (IA) -->
+        <div id="ai-tabs" class="hidden flex bg-white p-1 rounded-2xl card-shadow border border-gray-100">
+            <button onclick="switchMode('study')" id="tab-study" class="nav-btn active flex-1 py-3 text-[10px] font-bold uppercase rounded-xl transition-all">Estudio con IA</button>
+            <button onclick="switchMode('quiz')" id="tab-quiz" class="nav-btn flex-1 py-3 text-[10px] font-bold uppercase rounded-xl text-slate-400 transition-all">Modo Quiz</button>
+        </div>
+
+        <!-- Buscador (Verbos) -->
+        <div id="search-container" class="relative group mt-4">
+            <input type="text" id="verbSearch" placeholder="Busca entre más de 200 verbos..." 
+                class="w-full bg-white border-none rounded-2xl py-4 px-6 card-shadow text-sm focus:ring-2 focus:ring-indigo-500 outline-none transition-all">
+        </div>
+
+        <!-- Área de Contenido de Verbos -->
+        <div id="content-area" class="space-y-4"></div>
+
+        <!-- Contenedor General de IA -->
+        <div id="ai-section" class="hidden space-y-4">
+            <!-- Pantalla de Estado Inicial para IA -->
+            <div id="ai-placeholder" class="flex flex-col items-center justify-center py-20 text-center space-y-4 bg-white rounded-[2.5rem] card-shadow border border-gray-50 slide-up">
+                <div class="w-16 h-16 bg-indigo-50 text-indigo-500 rounded-full flex items-center justify-center">
+                    <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                </div>
+                <p id="placeholder-text" class="text-slate-400 text-sm font-medium px-10">Presiona el botón inferior para que la IA genere un ejemplo personalizado</p>
+            </div>
+
+            <!-- Visualizador de Resultados de IA -->
+            <div id="ai-display" class="hidden slide-up">
+                <div class="bg-white rounded-[2.5rem] p-8 card-shadow border border-gray-50 relative overflow-hidden">
+                    
+                    <!-- Contenido Estudio -->
+                    <div id="study-content" class="hidden text-center">
+                        <p id="phrase-en" class="text-2xl font-black text-slate-800 mb-4"></p>
+                        <div class="flex justify-center gap-4 mb-6">
+                            <button onclick="repeatAudio('study')" class="audio-btn">
+                                <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 20 20"><path d="M11 3a1 1 0 011 1v12a1 1.707.707L5.586 13H4a1 1 0 01-1-1V8a1 1 0 011-1h1.586l3.707-3.707a1 1.09-.217z"/></svg>
+                            </button>
+                        </div>
+                        
+                        <div class="flex flex-wrap justify-center gap-2 mb-4">
+                            <button onclick="toggleTrans()" class="px-4 py-2 bg-slate-100 rounded-full text-[10px] font-bold text-slate-600 uppercase">Traducir</button>
+                            <button onclick="getExplanation()" id="btn-explain" class="px-4 py-2 bg-indigo-50 rounded-full text-[10px] font-bold text-indigo-600 uppercase flex items-center gap-1">✨ Explicar Gramática</button>
+                        </div>
+
+                        <p id="phrase-es" class="hidden text-slate-500 italic font-medium mt-2 mb-4"></p>
+                        
+                        <!-- Panel de explicación IA -->
+                        <div id="explanation-panel" class="hidden mt-4 p-4 bg-indigo-50 rounded-2xl text-left border border-indigo-100 slide-up">
+                            <p class="text-[9px] font-black text-indigo-400 uppercase mb-2">✨ Nota del Tutor IA</p>
+                            <p id="explanation-text" class="text-xs text-indigo-800 leading-relaxed"></p>
+                        </div>
+                    </div>
+
+                    <!-- Contenido Quiz -->
+                    <div id="quiz-content" class="hidden">
+                        <div class="flex flex-col items-center gap-3 mb-6">
+                            <h3 id="quiz-q" class="text-xl font-bold text-slate-800 px-4 text-center"></h3>
+                            <button onclick="repeatAudio('quiz')" class="audio-btn">
+                                <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path d="M11 3a1 1 0 011 1v12a1 1.707.707L5.586 13H4a1 1 0 01-1-1V8a1 1 0 011-1h1.586l3.707-3.707a1 1.09-.217z"/></svg>
+                            </button>
+                        </div>
+                        <div id="quiz-options" class="grid grid-cols-1 gap-3"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Barra de Acción Flotante -->
+    <div id="action-bar" class="fixed bottom-24 left-6 right-6 hidden z-40">
+        <button id="btn-main" onclick="handleGenerate()" class="w-full gemini-gradient text-white rounded-[2rem] py-5 font-black text-sm uppercase tracking-widest shadow-xl shadow-indigo-200 flex items-center justify-center gap-3 transition-all active:scale-95 disabled:opacity-70">
+            <span id="btn-text">✨ Nuevo reto inteligente</span>
+        </button>
+    </div>
+
+    <!-- Navegación Inferior -->
+    <nav class="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 h-20 flex items-center justify-around px-10 z-50">
+        <button onclick="setView('verbs')" id="nav-v" class="flex flex-col items-center gap-1 text-indigo-600 transition-colors">
+            <svg class="w-6 h-6" viewBox="0 0 24 24" fill="currentColor"><path d="M19 5v14H5V5h14m0-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2z"/></svg>
+            <span class="text-[9px] font-bold uppercase">Verbos</span>
+        </button>
+        <button onclick="setView('ai')" id="nav-a" class="flex flex-col items-center gap-1 text-slate-300 transition-colors">
+            <svg class="w-6 h-6" viewBox="0 0 24 24" fill="currentColor"><path d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+            <span class="text-[9px] font-bold uppercase">Práctica IA</span>
+        </button>
+    </nav>
+
+    <script>
+        // --- CONFIGURACIÓN ---
+        const apiKey = ""; // La clave se inyectará automáticamente
+        
+        const verbs = [
+            ["Arise", "Arose", "Arisen", "Surgir"],
+            ["Be", "Was/Were", "Been", "Ser/Estar"],
+            ["Become", "Became", "Become", "Hacerse"],
+            ["Begin", "Began", "Begun", "Empezar"],
+            ["Break", "Broke", "Broken", "Romper"],
+            ["Bring", "Brought", "Brought", "Traer"],
+            ["Buy", "Bought", "Bought", "Comprar"],
+            ["Choose", "Chose", "Chosen", "Elegir"],
+            ["Come", "Came", "Come", "Venir"],
+            ["Do", "Did", "Done", "Hacer"],
+            ["Eat", "Ate", "Eaten", "Comer"],
+            ["Fly", "Flew", "Flown", "Volar"],
+            ["Go", "Went", "Gone", "Ir"],
+            ["Have", "Had", "Had", "Tener"],
+            ["Make", "Made", "Made", "Hacer"],
+            ["See", "Saw", "Seen", "Ver"],
+            ["Write", "Wrote", "Written", "Escribir"]
+        ];
+
+        let currentView = 'verbs';
+        let currentMode = 'study';
+        let lastData = null;
+        let puntos = 0;
+
+        // --- LLAMADAS GEMINI API ---
+        async function callIA(prompt, isJson = true) {
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
+            const payload = {
+                contents: [{ parts: [{ text: prompt }] }],
+                generationConfig: { 
+                    responseMimeType: isJson ? "application/json" : "text/plain", 
+                    temperature: 0.7 
+                }
+            };
+
+            // Implementación de reintentos con exponential backoff
+            for (let i = 0; i < 5; i++) {
+                try {
+                    const response = await fetch(url, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+                    if (!response.ok) throw new Error("RETRY");
+                    const data = await response.json();
+                    let text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+                    if (isJson) {
+                        const jsonMatch = text.match(/\{.*\}/s);
+                        return JSON.parse(jsonMatch[0]);
+                    }
+                    return text;
+                } catch (e) {
+                    const delay = Math.pow(2, i) * 1000;
+                    await new Promise(resolve => setTimeout(resolve, delay));
+                }
+            }
+            showError("No pude conectar con Gemini");
+            return null;
+        }
+
+        // FEATURE: Explicación Gramatical ✨
+        async function getExplanation() {
+            if (!lastData) return;
+            const btn = document.getElementById('btn-explain');
+            const panel = document.getElementById('explanation-panel');
+            const textEl = document.getElementById('explanation-text');
+            
+            btn.disabled = true;
+            btn.innerHTML = '✨ Consultando...';
+            
+            const prompt = `Analiza gramaticalmente la frase en inglés: "${lastData.en}". Explica de forma muy breve (máximo 2 frases) por qué se usa el verbo en esa forma. Responde en español.`;
+            
+            const explanation = await callIA(prompt, false);
+            if (explanation) {
+                textEl.innerText = explanation;
+                panel.classList.remove('hidden');
+            }
+            btn.innerHTML = '✨ Explicar Gramática';
+            btn.disabled = false;
+        }
+
+        function showError(msg) {
+            const btn = document.getElementById('btn-main');
+            const textEl = document.getElementById('btn-text');
+            const original = textEl.innerText;
+            textEl.innerText = msg;
+            btn.classList.replace('gemini-gradient', 'bg-red-500');
+            setTimeout(() => {
+                textEl.innerText = "✨ Nuevo reto inteligente";
+                btn.classList.replace('bg-red-500', 'gemini-gradient');
+            }, 3000);
+        }
+
+        function setView(view) {
+            currentView = view;
+            document.getElementById('search-container').classList.toggle('hidden', view !== 'verbs');
+            document.getElementById('content-area').classList.toggle('hidden', view !== 'verbs');
+            document.getElementById('ai-tabs').classList.toggle('hidden', view !== 'ai');
+            document.getElementById('ai-section').classList.toggle('hidden', view !== 'ai');
+            document.getElementById('action-bar').classList.toggle('hidden', view !== 'ai');
+            
+            document.getElementById('nav-v').className = view === 'verbs' ? 'flex flex-col items-center gap-1 text-indigo-600' : 'flex flex-col items-center gap-1 text-slate-300';
+            document.getElementById('nav-a').className = view === 'ai' ? 'flex flex-col items-center gap-1 text-indigo-600' : 'flex flex-col items-center gap-1 text-slate-300';
+            
+            if (view === 'verbs') renderVerbs(verbs);
+        }
+
+        function switchMode(mode) {
+            currentMode = mode;
+            document.getElementById('tab-study').className = `nav-btn flex-1 py-3 text-[10px] font-bold uppercase rounded-xl transition-all ${mode === 'study' ? 'active' : 'text-slate-400'}`;
+            document.getElementById('tab-quiz').className = `nav-btn flex-1 py-3 text-[10px] font-bold uppercase rounded-xl transition-all ${mode === 'quiz' ? 'active' : 'text-slate-400'}`;
+            
+            document.getElementById('placeholder-text').innerText = mode === 'study' ? "La IA generará una frase conversacional útil para ti" : "Demuestra tu dominio con los retos generados por IA";
+            document.getElementById('ai-display').classList.add('hidden');
+            document.getElementById('ai-placeholder').classList.remove('hidden');
+        }
+
+        async function handleGenerate() {
+            const btn = document.getElementById('btn-main');
+            const textEl = document.getElementById('btn-text');
+            btn.disabled = true;
+            textEl.innerHTML = '<div class="loading-spinner"></div> <span class="ml-2">✨ Procesando...</span>';
+
+            const randomVerb = verbs[Math.floor(Math.random() * verbs.length)][0];
+            
+            try {
+                if (currentMode === 'study') {
+                    // Prompt mejorado para contextos reales
+                    const prompt = `Genera una frase útil y natural en inglés para el nivel intermedio usando el verbo "${randomVerb}". El contexto debe ser de negocios, viajes o vida cotidiana. Responde solo con JSON: {"en": "frase", "es": "traducción"}`;
+                    const data = await callIA(prompt);
+                    if (data) showStudy(data);
+                } else {
+                    const prompt = `Crea un reto de completar frase para el verbo "${randomVerb}". Dame una frase con "___" y 3 opciones donde solo una sea correcta gramaticalmente. Responde solo con JSON: {"q": "Frase con ___", "options": ["op1", "op2", "op3"], "correct": 0}`;
+                    const data = await callIA(prompt);
+                    if (data) showQuiz(data);
+                }
+            } finally {
+                btn.disabled = false;
+                textEl.innerText = "✨ Nuevo reto inteligente";
+            }
+        }
+
+        function showStudy(data) {
+            lastData = data;
+            document.getElementById('ai-placeholder').classList.add('hidden');
+            document.getElementById('ai-display').classList.remove('hidden');
+            document.getElementById('study-content').classList.remove('hidden');
+            document.getElementById('quiz-content').classList.add('hidden');
+            document.getElementById('explanation-panel').classList.add('hidden');
+            
+            document.getElementById('phrase-en').innerText = data.en;
+            document.getElementById('phrase-es').innerText = data.es;
+            document.getElementById('phrase-es').classList.add('hidden');
+            speak(data.en);
+        }
+
+        function showQuiz(data) {
+            lastData = data;
+            document.getElementById('ai-placeholder').classList.add('hidden');
+            document.getElementById('ai-display').classList.remove('hidden');
+            document.getElementById('quiz-content').classList.remove('hidden');
+            document.getElementById('study-content').classList.add('hidden');
+            document.getElementById('quiz-q').innerText = data.q;
+            const optCont = document.getElementById('quiz-options');
+            optCont.innerHTML = '';
+            
+            data.options.forEach((opt, idx) => {
+                const b = document.createElement('button');
+                b.className = "w-full p-5 bg-slate-50 rounded-[1.5rem] text-left font-bold text-slate-700 border-2 border-transparent transition-all";
+                b.innerText = opt;
+                b.onclick = () => {
+                    const btns = optCont.querySelectorAll('button');
+                    btns.forEach(btn => btn.disabled = true);
+                    if (idx === data.correct) {
+                        b.classList.add('border-emerald-500', 'bg-emerald-50');
+                        puntos += 15; // Más puntos por retos de IA
+                        document.getElementById('puntos-val').innerText = puntos;
+                        speak("Correct! Well done");
+                    } else {
+                        b.classList.add('border-red-500', 'bg-red-50');
+                        btns[data.correct].classList.add('border-emerald-500');
+                        speak("Not quite. Keep trying");
+                    }
+                };
+                optCont.appendChild(b);
+            });
+            speak(data.q.replace("___", "blank"));
+        }
+
+        function renderVerbs(data) {
+            const cont = document.getElementById('content-area');
+            cont.innerHTML = '';
+            data.forEach(v => {
+                const card = document.createElement('div');
+                card.className = "bg-white p-5 rounded-[2rem] card-shadow border border-gray-50 flex justify-between items-center slide-up";
+                card.innerHTML = `
+                    <div>
+                        <div class="flex items-center gap-2">
+                            <h2 class="text-lg font-black text-slate-800">${v[0]}</h2>
+                            <span class="text-[9px] font-bold text-slate-400 bg-slate-50 px-2 py-0.5 rounded-lg">${v[3]}</span>
+                        </div>
+                        <div class="flex gap-3 text-[10px] font-bold">
+                            <span class="text-indigo-600">${v[1]}</span>
+                            <span class="text-emerald-600">${v[2]}</span>
+                        </div>
+                    </div>
+                    <button onclick="speak('${v[0]}, ${v[1]}, ${v[2]}')" class="audio-btn">
+                        <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path d="M11 3a1 1 0 011 1v12a1 1.707.707L5.586 13H4a1 1 0 01-1-1V8a1 1 0 011-1h1.586l3.707-3.707a1 1.09-.217z"/></svg>
+                    </button>`;
+                cont.appendChild(card);
+            });
+        }
+
+        function speak(text) {
+            if (!window.speechSynthesis) return;
+            window.speechSynthesis.cancel();
+            const u = new SpeechSynthesisUtterance(text);
+            u.lang = 'en-US';
+            u.rate = 0.85;
+            window.speechSynthesis.speak(u);
+        }
+
+        function repeatAudio(mode) {
+            if (lastData) speak(mode === 'study' ? lastData.en : lastData.q);
+        }
+
+        function toggleTrans() {
+            document.getElementById('phrase-es').classList.toggle('hidden');
+        }
+
+        document.getElementById('verbSearch').addEventListener('input', (e) => {
+            const term = e.target.value.toLowerCase();
+            renderVerbs(verbs.filter(v => v[0].toLowerCase().includes(term) || v[3].toLowerCase().includes(term)));
+        });
+
+        renderVerbs(verbs);
+    </script>
+</body>
+</html>
